@@ -39,6 +39,7 @@ const iconEditorOffsetY = ref(0);
 const iconEditorDataUrl = ref('');
 const iconEditorName = ref('icon.png');
 const iconPreviewCanvas = ref<HTMLCanvasElement>();
+const iconFilePreviewUrl = ref('');
 const sourceImage = new Image();
 sourceImage.onload = () => {
   renderIconPreview();
@@ -120,13 +121,76 @@ const uploadLoadingText = computed(() =>
   processingStage.value === 'mod' ? 'APK修改并构建中...' : 'APK 上传与解析中...'
 );
 
+const compareRows = computed(() => {
+  if (!apkInfo.value) return [];
+
+  const normalize = (value: string | undefined | null): string => (value && value.trim() ? value.trim() : '-');
+  const nextAppName = appName.value.trim() || apkInfo.value.appName || '';
+  const nextPackageName = packageName.value.trim() || apkInfo.value.packageName || '';
+  const nextVersionName = versionName.value.trim() || apkInfo.value.versionName || '';
+  const nextVersionCode = versionCode.value.trim() || apkInfo.value.versionCode || '';
+
+  return [
+    {
+      key: 'appName',
+      label: '应用名',
+      current: normalize(apkInfo.value.appName),
+      next: normalize(nextAppName),
+      changed: normalize(apkInfo.value.appName) !== normalize(nextAppName)
+    },
+    {
+      key: 'packageName',
+      label: '标识符/包名',
+      current: normalize(apkInfo.value.packageName),
+      next: normalize(nextPackageName),
+      changed: normalize(apkInfo.value.packageName) !== normalize(nextPackageName)
+    },
+    {
+      key: 'versionName',
+      label: '版本名',
+      current: normalize(apkInfo.value.versionName),
+      next: normalize(nextVersionName),
+      changed: normalize(apkInfo.value.versionName) !== normalize(nextVersionName)
+    },
+    {
+      key: 'versionCode',
+      label: '版本号',
+      current: normalize(apkInfo.value.versionCode),
+      next: normalize(nextVersionCode),
+      changed: normalize(apkInfo.value.versionCode) !== normalize(nextVersionCode)
+    }
+  ];
+});
+
+const changedFieldCount = computed(() => compareRows.value.filter((row) => row.changed).length);
+const iconChanged = computed(() => Boolean(iconFile.value));
+
 watch([iconEditorScale, iconEditorOffsetX, iconEditorOffsetY, iconEditorVisible], () => {
   if (iconEditorVisible.value) {
     renderIconPreview();
   }
 });
 
+watch(
+  () => iconFile.value,
+  (file, oldFile) => {
+    if (iconFilePreviewUrl.value) {
+      URL.revokeObjectURL(iconFilePreviewUrl.value);
+      iconFilePreviewUrl.value = '';
+    }
+    if (file) {
+      iconFilePreviewUrl.value = URL.createObjectURL(file);
+    }
+
+    if (oldFile && oldFile === file) return;
+  }
+);
+
 onBeforeUnmount(() => {
+  if (iconFilePreviewUrl.value) {
+    URL.revokeObjectURL(iconFilePreviewUrl.value);
+    iconFilePreviewUrl.value = '';
+  }
   taskStore.stopPolling();
 });
 </script>
@@ -177,37 +241,65 @@ onBeforeUnmount(() => {
         任务 ID: <code>{{ currentTaskId }}</code>
       </div>
 
-      <div class="apk-info mt" v-if="apkInfo">
-        <div class="apk-icon">
-          <img v-if="apkInfo.iconUrl" :src="apkInfo.iconUrl" alt="apk icon" />
-          <div v-else class="icon-fallback">无图标</div>
+      <div class="comparison mt" v-if="currentTaskId">
+        <div class="comparison-head">
+          <strong>包信息对照</strong>
+          <el-tag type="info" size="small">字段变更 {{ changedFieldCount }} 项</el-tag>
+          <el-tag :type="iconChanged ? 'warning' : 'info'" size="small">图标{{ iconChanged ? '已更换' : '未更换' }}</el-tag>
         </div>
-        <div class="apk-fields">
-          <div><strong>当前应用名：</strong>{{ apkInfo.appName || '-' }}</div>
-          <div><strong>当前标识符：</strong><code>{{ apkInfo.packageName || '-' }}</code></div>
-          <div>
-            <strong>当前版本：</strong>
-            {{ apkInfo.versionName || '-' }}
-            <span class="ver-code">({{ apkInfo.versionCode || '-' }})</span>
+
+        <div class="comparison-grid">
+          <div class="compare-panel">
+            <div class="panel-title">原包信息</div>
+            <div class="apk-icon">
+              <img v-if="apkInfo?.iconUrl" :src="apkInfo.iconUrl" alt="current apk icon" />
+              <div v-else class="icon-fallback">无图标</div>
+            </div>
+            <div class="compare-rows">
+              <div v-for="row in compareRows" :key="`cur-${row.key}`" class="compare-row">
+                <span class="compare-label">{{ row.label }}</span>
+                <span class="compare-value"><code v-if="row.key === 'packageName'">{{ row.current }}</code><template v-else>{{ row.current }}</template></span>
+              </div>
+            </div>
+          </div>
+
+          <div class="compare-panel">
+            <div class="panel-title">修改信息</div>
+            <div class="apk-icon">
+              <img v-if="iconFilePreviewUrl" :src="iconFilePreviewUrl" alt="new apk icon" />
+              <img v-else-if="apkInfo?.iconUrl" :src="apkInfo.iconUrl" alt="current apk icon" />
+              <div v-else class="icon-fallback">无图标</div>
+            </div>
+            <div class="compare-rows">
+              <div v-for="row in compareRows" :key="`new-${row.key}`" class="compare-row">
+                <span class="compare-label">{{ row.label }}</span>
+                <span class="compare-value">
+                  <code v-if="row.key === 'packageName'">{{ row.next }}</code>
+                  <template v-else>{{ row.next }}</template>
+                </span>
+                <el-tag v-if="row.changed" type="warning" size="small">已改</el-tag>
+              </div>
+            </div>
           </div>
         </div>
-      </div>
 
-      <div class="mod-form mt" v-if="currentTaskId">
-        <el-input v-model="appName" placeholder="新应用名（可改）" clearable />
-        <el-input v-model="packageName" placeholder="新标识符/包名（可改）" clearable />
-        <el-input v-model="versionName" placeholder="新版本名（例如 1.0.0）" clearable />
-        <el-input v-model="versionCode" placeholder="新版本号（例如 100，对应(100)）" clearable />
-        <el-upload
-          :auto-upload="false"
-          :show-file-list="true"
-          :limit="1"
-          accept=".png,.webp,.jpg,.jpeg,image/png,image/webp,image/jpeg"
-          :on-change="onIconChange"
-        >
-          <el-button>选择新图标（png/webp/jpg）</el-button>
-        </el-upload>
-        <div class="icon-name" v-if="iconFile">图标：{{ iconFile.name }}</div>
+        <div class="mod-form">
+          <el-input v-model="appName" placeholder="新应用名（可改）" clearable />
+          <el-input v-model="packageName" placeholder="新标识符/包名（可改）" clearable />
+          <el-input v-model="versionName" placeholder="新版本名（例如 1.0.0）" clearable />
+          <el-input v-model="versionCode" placeholder="新版本号（例如 100，对应(100)）" clearable />
+          <el-upload
+            :auto-upload="false"
+            :show-file-list="true"
+            :limit="1"
+            accept=".png,.webp,.jpg,.jpeg,image/png,image/webp,image/jpeg"
+            :on-change="onIconChange"
+          >
+            <el-button>选择新图标（png/webp/jpg）</el-button>
+          </el-upload>
+          <div class="icon-name" v-if="iconFile">图标：{{ iconFile.name }}</div>
+        </div>
+
         <div class="unity-block">
           <div class="unity-head">
             <strong>Unity 可变参数</strong>
@@ -225,18 +317,21 @@ onBeforeUnmount(() => {
           </div>
           <el-empty v-if="!unityEntries.length" description="上传解析完成后会自动显示可编辑参数" :image-size="56" />
         </div>
-        <el-button type="primary" :disabled="!canMod" :loading="modding" @click="taskStore.startModBuild">
-          修改并构建
-        </el-button>
-        <el-button
-          v-if="downloadReady"
-          type="success"
-          plain
-          :href="`/api/download/${currentTaskId}`"
-          tag="a"
-        >
-          下载 APK
-        </el-button>
+
+        <div class="actions-row">
+          <el-button type="primary" :disabled="!canMod" :loading="modding" @click="taskStore.startModBuild">
+            修改并构建
+          </el-button>
+          <el-button
+            v-if="downloadReady"
+            type="success"
+            plain
+            :href="`/api/download/${currentTaskId}`"
+            tag="a"
+          >
+            下载 APK
+          </el-button>
+        </div>
       </div>
 
       <el-alert
@@ -316,15 +411,38 @@ onBeforeUnmount(() => {
   color: #606266;
 }
 
-.apk-info {
-  display: grid;
-  grid-template-columns: 80px 1fr;
-  gap: 14px;
-  align-items: center;
+.comparison {
   border: 1px solid #ebeef5;
   border-radius: 8px;
   padding: 12px;
   background: #fff;
+}
+
+.comparison-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+.comparison-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+
+.compare-panel {
+  border: 1px solid #ebeef5;
+  border-radius: 8px;
+  padding: 10px;
+  display: grid;
+  gap: 10px;
+}
+
+.panel-title {
+  font-size: 13px;
+  color: #606266;
+  font-weight: 600;
 }
 
 .apk-icon img,
@@ -345,6 +463,28 @@ onBeforeUnmount(() => {
   gap: 6px;
   font-size: 14px;
   color: #303133;
+}
+
+.compare-rows {
+  display: grid;
+  gap: 8px;
+}
+
+.compare-row {
+  display: grid;
+  grid-template-columns: 110px 1fr auto;
+  align-items: center;
+  gap: 8px;
+}
+
+.compare-label {
+  color: #909399;
+  font-size: 12px;
+}
+
+.compare-value {
+  color: #303133;
+  font-size: 13px;
 }
 
 .ver-code {
@@ -383,7 +523,7 @@ onBeforeUnmount(() => {
 }
 
 .unity-block {
-  grid-column: 1 / -1;
+  margin-top: 12px;
   border: 1px solid #ebeef5;
   border-radius: 8px;
   padding: 10px;
@@ -441,6 +581,12 @@ onBeforeUnmount(() => {
   color: #303133;
 }
 
+.actions-row {
+  margin-top: 12px;
+  display: flex;
+  gap: 10px;
+}
+
 .logs {
   border: 1px solid #ebeef5;
   border-radius: 8px;
@@ -461,6 +607,10 @@ onBeforeUnmount(() => {
 }
 
 @media (max-width: 900px) {
+  .comparison-grid {
+    grid-template-columns: 1fr;
+  }
+
   .mod-form {
     grid-template-columns: 1fr;
   }
