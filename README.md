@@ -136,8 +136,12 @@ docker compose up -d
   - `apktool` jar（默认 GitHub release）
   - Android build-tools（默认 `build-tools_r34-linux.zip`）
 - 受限网络可通过 `.env` 覆盖构建参数（示例见 `README-quickstart.md`）：
+  - `NODE_BUILD_IMAGE`
+  - `NODE_RUNTIME_IMAGE`
   - `APKTOOL_JAR_URL`
   - `ANDROID_BUILD_TOOLS_URL`
+  - `JRE_URL_AMD64`
+  - `JRE_URL_ARM64`
 
 ## 环境变量（后端）
 
