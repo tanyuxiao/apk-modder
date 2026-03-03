@@ -1,5 +1,5 @@
-ARG NODE_BUILD_IMAGE=swr.cn-north-4.myhuaweicloud.com/ddn-k8s/docker.io/library/node:20-bookworm
-ARG NODE_RUNTIME_IMAGE=swr.cn-north-4.myhuaweicloud.com/ddn-k8s/docker.io/library/node:20-bookworm-slim
+ARG NODE_BUILD_IMAGE=docker.m.daocloud.io/library/node:20-bookworm
+ARG NODE_RUNTIME_IMAGE=docker.m.daocloud.io/library/node:20-bookworm-slim
 
 FROM ${NODE_BUILD_IMAGE} AS build
 WORKDIR /app
@@ -35,9 +35,35 @@ RUN set -eux; \
     *) echo "Unsupported TARGETARCH: ${TARGETARCH}"; exit 1 ;; \
   esac; \
   mkdir -p /opt/tooling; \
-  curl -fsSL --retry 6 --retry-delay 2 --connect-timeout 20 "${APKTOOL_JAR_URL}" -o /opt/tooling/apktool.jar; \
-  curl -fsSL --retry 6 --retry-delay 2 --connect-timeout 20 "${ANDROID_BUILD_TOOLS_URL}" -o /opt/tooling/build-tools.zip; \
-  curl -fsSL --retry 6 --retry-delay 2 --connect-timeout 20 "${jre_url}" -o /opt/tooling/jre.tar.gz
+  export APKTOOL_JAR_URL ANDROID_BUILD_TOOLS_URL JRE_URL="${jre_url}"; \
+  node -e ' \
+    const fs = require("fs"); \
+    const wait = (ms) => new Promise((resolve) => setTimeout(resolve, ms)); \
+    async function download(url, out) { \
+      let lastError; \
+      for (let i = 1; i <= 6; i++) { \
+        try { \
+          const res = await fetch(url, { redirect: "follow" }); \
+          if (!res.ok) throw new Error(`HTTP ${res.status} ${url}`); \
+          const buf = Buffer.from(await res.arrayBuffer()); \
+          fs.writeFileSync(out, buf); \
+          return; \
+        } catch (err) { \
+          lastError = err; \
+          if (i < 6) await wait(i * 2000); \
+        } \
+      } \
+      throw lastError; \
+    } \
+    (async () => { \
+      await download(process.env.APKTOOL_JAR_URL, "/opt/tooling/apktool.jar"); \
+      await download(process.env.ANDROID_BUILD_TOOLS_URL, "/opt/tooling/build-tools.zip"); \
+      await download(process.env.JRE_URL, "/opt/tooling/jre.tar.gz"); \
+    })().catch((err) => { \
+      console.error(String(err)); \
+      process.exit(1); \
+    }); \
+  '
 
 FROM ${NODE_RUNTIME_IMAGE} AS runtime
 WORKDIR /app

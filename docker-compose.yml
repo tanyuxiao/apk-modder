@@ -4,8 +4,8 @@ services:
       context: .
       dockerfile: Dockerfile
       args:
-        NODE_BUILD_IMAGE: ${NODE_BUILD_IMAGE:-swr.cn-north-4.myhuaweicloud.com/ddn-k8s/docker.io/library/node:20-bookworm}
-        NODE_RUNTIME_IMAGE: ${NODE_RUNTIME_IMAGE:-swr.cn-north-4.myhuaweicloud.com/ddn-k8s/docker.io/library/node:20-bookworm-slim}
+        NODE_BUILD_IMAGE: ${NODE_BUILD_IMAGE:-docker.m.daocloud.io/library/node:20-bookworm}
+        NODE_RUNTIME_IMAGE: ${NODE_RUNTIME_IMAGE:-docker.m.daocloud.io/library/node:20-bookworm-slim}
         APKTOOL_VERSION: ${APKTOOL_VERSION:-2.11.1}
         APKTOOL_JAR_URL: ${APKTOOL_JAR_URL:-https://github.com/iBotPeaches/Apktool/releases/download/v2.11.1/apktool_2.11.1.jar}
         ANDROID_BUILD_TOOLS_VERSION: ${ANDROID_BUILD_TOOLS_VERSION:-34.0.0}
