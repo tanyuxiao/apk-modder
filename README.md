@@ -130,6 +130,15 @@ docker compose up -d
 
 服务端口：`http://localhost:3000`
 
+说明：
+- Compose 默认使用 Docker named volume（`apk_modder_data`）保存运行数据，避免 macOS bind mount 小文件 IO 瓶颈。
+- 首次构建会下载：
+  - `apktool` jar（默认 GitHub release）
+  - Android build-tools（默认 `build-tools_r34-linux.zip`）
+- 受限网络可通过 `.env` 覆盖构建参数（示例见 `README-quickstart.md`）：
+  - `APKTOOL_JAR_URL`
+  - `ANDROID_BUILD_TOOLS_URL`
+
 ## 环境变量（后端）
 
 - `PORT` 默认 `3000`

@@ -18,33 +18,44 @@ RUN pnpm --filter frontend build \
   && pnpm --filter backend build \
   && pnpm --filter backend --prod deploy --legacy /opt/backend
 
+FROM eclipse-temurin:17-jdk-jammy AS jdk
+
+FROM curlimages/curl:8.12.1 AS downloader
+ARG APKTOOL_VERSION=2.11.1
+ARG APKTOOL_JAR_URL=https://github.com/iBotPeaches/Apktool/releases/download/v${APKTOOL_VERSION}/apktool_${APKTOOL_VERSION}.jar
+ARG ANDROID_BUILD_TOOLS_URL=https://dl.google.com/android/repository/build-tools_r34-linux.zip
+RUN mkdir -p /tmp/downloads \
+  && curl -fsSL --retry 6 --retry-delay 2 --connect-timeout 20 "${APKTOOL_JAR_URL}" -o /tmp/downloads/apktool.jar \
+  && curl -fsSL --retry 6 --retry-delay 2 --connect-timeout 20 "${ANDROID_BUILD_TOOLS_URL}" -o /tmp/downloads/build-tools.zip
+
 FROM node:20-bookworm-slim AS runtime
 WORKDIR /app
 
-ENV DEBIAN_FRONTEND=noninteractive
-ARG APT_MIRROR=https://mirrors.tuna.tsinghua.edu.cn
+ARG ANDROID_BUILD_TOOLS_VERSION=34.0.0
+COPY --from=jdk /opt/java/openjdk /opt/java/openjdk
+COPY --from=downloader /tmp/downloads/apktool.jar /opt/apktool/apktool.jar
+COPY --from=downloader /tmp/downloads/build-tools.zip /tmp/build-tools.zip
 
 RUN set -eux; \
-  for f in /etc/apt/sources.list /etc/apt/sources.list.d/*.list; do \
-    [ -f "$f" ] || continue; \
-    sed -i "s|http://deb.debian.org/debian|${APT_MIRROR}/debian|g" "$f"; \
-    sed -i "s|http://deb.debian.org/debian-security|${APT_MIRROR}/debian-security|g" "$f"; \
-    sed -i "s|https://deb.debian.org/debian|${APT_MIRROR}/debian|g" "$f"; \
-    sed -i "s|https://deb.debian.org/debian-security|${APT_MIRROR}/debian-security|g" "$f"; \
-  done
+  mkdir -p /opt/android/build-tools/${ANDROID_BUILD_TOOLS_VERSION}; \
+  cd /opt/android/build-tools/${ANDROID_BUILD_TOOLS_VERSION}; \
+  /opt/java/openjdk/bin/jar xf /tmp/build-tools.zip; \
+  rm -f /tmp/build-tools.zip; \
+  tools_dir="$(dirname "$(find /opt/android/build-tools/${ANDROID_BUILD_TOOLS_VERSION} -type f -name apksigner | head -n1)")"; \
+  test -n "${tools_dir}"; \
+  test -f "${tools_dir}/zipalign"; \
+  printf '%s\n' '#!/bin/sh' "exec ${tools_dir}/zipalign \"\$@\"" > /usr/local/bin/zipalign; \
+  printf '%s\n' '#!/bin/sh' "exec ${tools_dir}/apksigner \"\$@\"" > /usr/local/bin/apksigner; \
+  printf '%s\n' '#!/bin/sh' 'exec java -jar /opt/apktool/apktool.jar "$@"' > /usr/local/bin/apktool; \
+  chmod +x /usr/local/bin/apktool /usr/local/bin/zipalign /usr/local/bin/apksigner \
+    "${tools_dir}/zipalign" \
+    "${tools_dir}/apksigner"
 
-RUN apt-get -o Acquire::Retries=6 -o Acquire::http::Timeout=20 update && \
-  apt-get -o Acquire::Retries=6 -o Acquire::http::Timeout=20 install -y --no-install-recommends --fix-missing \
-  openjdk-17-jre-headless \
-  apktool \
-  zipalign \
-  apksigner \
-  ca-certificates \
-  && rm -rf /var/lib/apt/lists/*
-
-ENV APKTOOL_PATH=/usr/bin/apktool
-ENV ZIPALIGN_PATH=/usr/bin/zipalign
-ENV APKSIGNER_PATH=/usr/bin/apksigner
+ENV APKTOOL_PATH=/usr/local/bin/apktool
+ENV ZIPALIGN_PATH=/usr/local/bin/zipalign
+ENV APKSIGNER_PATH=/usr/local/bin/apksigner
+ENV JAVA_HOME=/opt/java/openjdk
+ENV PATH=/opt/java/openjdk/bin:$PATH
 ENV HOST=0.0.0.0
 
 COPY --from=build /opt/backend /app
