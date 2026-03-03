@@ -12,8 +12,8 @@ RUN corepack enable && corepack prepare pnpm@10.20.0 --activate
 ARG APKTOOL_VERSION=2.11.1
 ARG APKTOOL_JAR_URL=https://github.com/iBotPeaches/Apktool/releases/download/v${APKTOOL_VERSION}/apktool_${APKTOOL_VERSION}.jar
 ARG ANDROID_BUILD_TOOLS_URL=https://dl.google.com/android/repository/build-tools_r34-linux.zip
-ARG JRE_URL_AMD64=https://api.adoptium.net/v3/binary/latest/17/ga/linux/x64/jre/hotspot/normal/eclipse
-ARG JRE_URL_ARM64=https://api.adoptium.net/v3/binary/latest/17/ga/linux/aarch64/jre/hotspot/normal/eclipse
+ARG JDK_URL_AMD64=https://api.adoptium.net/v3/binary/latest/17/ga/linux/x64/jdk/hotspot/normal/eclipse
+ARG JDK_URL_ARM64=https://api.adoptium.net/v3/binary/latest/17/ga/linux/aarch64/jdk/hotspot/normal/eclipse
 ARG TARGETARCH
 
 COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
@@ -28,14 +28,14 @@ RUN pnpm --filter frontend build \
   && pnpm --filter backend build \
   && pnpm --filter backend --prod deploy --legacy /opt/backend
 
-RUN set -eux; \
+  RUN set -eux; \
   case "${TARGETARCH}" in \
-    amd64) jre_url="${JRE_URL_AMD64}" ;; \
-    arm64) jre_url="${JRE_URL_ARM64}" ;; \
+    amd64) jdk_url="${JDK_URL_AMD64}" ;; \
+    arm64) jdk_url="${JDK_URL_ARM64}" ;; \
     *) echo "Unsupported TARGETARCH: ${TARGETARCH}"; exit 1 ;; \
   esac; \
   mkdir -p /opt/tooling; \
-  export APKTOOL_JAR_URL ANDROID_BUILD_TOOLS_URL JRE_URL="${jre_url}"; \
+  export APKTOOL_JAR_URL ANDROID_BUILD_TOOLS_URL JDK_URL="${jdk_url}"; \
   node -e ' \
     const fs = require("fs"); \
     const wait = (ms) => new Promise((resolve) => setTimeout(resolve, ms)); \
@@ -58,7 +58,7 @@ RUN set -eux; \
     (async () => { \
       await download(process.env.APKTOOL_JAR_URL, "/opt/tooling/apktool.jar"); \
       await download(process.env.ANDROID_BUILD_TOOLS_URL, "/opt/tooling/build-tools.zip"); \
-      await download(process.env.JRE_URL, "/opt/tooling/jre.tar.gz"); \
+      await download(process.env.JDK_URL, "/opt/tooling/jdk.tar.gz"); \
     })().catch((err) => { \
       console.error(String(err)); \
       process.exit(1); \
@@ -71,12 +71,12 @@ WORKDIR /app
 ARG ANDROID_BUILD_TOOLS_VERSION=34.0.0
 COPY --from=build /opt/tooling/apktool.jar /opt/apktool/apktool.jar
 COPY --from=build /opt/tooling/build-tools.zip /tmp/build-tools.zip
-COPY --from=build /opt/tooling/jre.tar.gz /tmp/jre.tar.gz
+COPY --from=build /opt/tooling/jdk.tar.gz /tmp/jdk.tar.gz
 
 RUN set -eux; \
   mkdir -p /opt/java/openjdk; \
-  tar -xzf /tmp/jre.tar.gz -C /opt/java/openjdk --strip-components=1; \
-  rm -f /tmp/jre.tar.gz; \
+  tar -xzf /tmp/jdk.tar.gz -C /opt/java/openjdk --strip-components=1; \
+  rm -f /tmp/jdk.tar.gz; \
   mkdir -p /opt/android/build-tools/${ANDROID_BUILD_TOOLS_VERSION}; \
   cd /opt/android/build-tools/${ANDROID_BUILD_TOOLS_VERSION}; \
   /opt/java/openjdk/bin/jar xf /tmp/build-tools.zip; \

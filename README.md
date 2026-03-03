@@ -140,8 +140,8 @@ docker compose up -d
   - `NODE_RUNTIME_IMAGE`
   - `APKTOOL_JAR_URL`
   - `ANDROID_BUILD_TOOLS_URL`
-  - `JRE_URL_AMD64`
-  - `JRE_URL_ARM64`
+  - `JDK_URL_AMD64`
+  - `JDK_URL_ARM64`
 
 ## 环境变量（后端）
 
