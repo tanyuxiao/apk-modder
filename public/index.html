@@ -35,6 +35,7 @@
       .muted { color: var(--muted); font-size: 13px; }
       .row { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; margin-top: 10px; }
       .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+      .unity-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-top: 10px; }
       .field { display: grid; gap: 6px; margin-bottom: 10px; }
       .field label { color: var(--muted); font-size: 12px; }
       input[type="text"], input[type="password"], textarea {
@@ -59,9 +60,11 @@
       .kv .v { font-size: 14px; word-break: break-all; }
       .icon-box { width: 76px; height: 76px; border: 1px solid var(--line); border-radius: 12px; display: grid; place-items: center; overflow: hidden; background: #fff; margin-bottom: 8px; }
       .icon-box img { width: 100%; height: 100%; object-fit: contain; }
+      .icon-empty { color: var(--muted); font-size: 12px; }
       .toolbar { display: flex; justify-content: space-between; align-items: center; gap: 10px; }
       @media (max-width: 860px) {
         .grid { grid-template-columns: 1fr; }
+        .unity-grid { grid-template-columns: 1fr; }
       }
     </style>
   </head>
@@ -83,9 +86,8 @@
       <div class="card">
         <strong>上传 APK</strong>
         <div class="row">
-          <input id="apkFile" type="file" accept=".apk,application/vnd.android.package-archive" />
-          <button id="uploadBtn">上传并解析</button>
-          <input id="apiKey" type="password" placeholder="可选 API Key（用于修改/下载）" style="max-width:320px" />
+          <input id="apkFile" type="file" accept=".apk,application/vnd.android.package-archive" style="display:none" />
+          <button id="pickApkBtn">选择 APK 并自动解析</button>
         </div>
         <div class="row">
           <span class="muted">任务ID: <code id="taskId">-</code></span>
@@ -104,7 +106,10 @@
         <div class="grid" style="margin-top:10px">
           <div class="compare-box">
             <div class="compare-title">原包信息</div>
-            <div class="icon-box"><img id="srcIcon" alt="source icon" /></div>
+            <div class="icon-box">
+              <img id="srcIcon" alt="source icon" style="display:none" />
+              <span id="srcIconEmpty" class="icon-empty">无图标</span>
+            </div>
             <div class="kv"><span class="k">应用名</span><span class="v" id="srcName">-</span><span></span></div>
             <div class="kv"><span class="k">包名</span><span class="v"><code id="srcPkg">-</code></span><span></span></div>
             <div class="kv"><span class="k">版本名</span><span class="v" id="srcVer">-</span><span></span></div>
@@ -113,7 +118,10 @@
 
           <div class="compare-box">
             <div class="compare-title">修改信息</div>
-            <div class="icon-box"><img id="newIcon" alt="new icon" /></div>
+            <div class="icon-box">
+              <img id="newIcon" alt="new icon" style="display:none" />
+              <span id="newIconEmpty" class="icon-empty">无图标</span>
+            </div>
             <div class="field"><label>应用名</label><input id="appName" type="text" /></div>
             <div class="field"><label>包名</label><input id="packageName" type="text" /></div>
             <div class="field"><label>版本名</label><input id="versionName" type="text" /></div>
@@ -129,7 +137,16 @@
           <input id="unityPath" type="text" value="Assets/StreamingAssets/scene-config.json" style="min-width:420px" />
           <button id="loadUnity" class="secondary">读取</button>
         </div>
-        <textarea id="unityJson" placeholder='示例: [{"path":"gameConfig.maxLevel","value":99}]'></textarea>
+        <div class="unity-grid">
+          <div>
+            <div class="muted" style="margin-bottom:6px;">原包参数（只读）</div>
+            <textarea id="unityOriginalJson" readonly></textarea>
+          </div>
+          <div>
+            <div class="muted" style="margin-bottom:6px;">修改参数（可编辑）</div>
+            <textarea id="unityModifiedJson" placeholder='示例: [{"path":"gameConfig.maxLevel","value":99}]'></textarea>
+          </div>
+        </div>
       </div>
 
       <div class="card">
@@ -155,9 +172,25 @@
 
       const $ = (id) => document.getElementById(id);
       const setText = (id, text) => ($(id).textContent = text ?? '-');
-      const apiKey = () => $('apiKey').value.trim();
-      const withAuth = (headers = {}) => (apiKey() ? { ...headers, 'x-api-key': apiKey() } : headers);
       const norm = (v) => (v && String(v).trim() ? String(v).trim() : '-');
+      const setIcon = (imgId, emptyId, src) => {
+        const img = $(imgId);
+        const empty = $(emptyId);
+        img.onerror = () => {
+          img.removeAttribute('src');
+          img.style.display = 'none';
+          empty.style.display = 'inline';
+        };
+        if (src && String(src).trim()) {
+          img.src = src;
+          img.style.display = 'block';
+          empty.style.display = 'none';
+        } else {
+          img.removeAttribute('src');
+          img.style.display = 'none';
+          empty.style.display = 'inline';
+        }
+      };
 
       async function api(url, options = {}) {
         const res = await fetch(url, options);
@@ -205,8 +238,10 @@
         setText('changedCount', `字段变更 ${changes} 项`);
 
         const srcIcon = info.iconUrl || '';
-        $('srcIcon').src = srcIcon;
-        $('newIcon').src = $('iconFile').files?.[0] ? URL.createObjectURL($('iconFile').files[0]) : srcIcon;
+        const newIconFile = $('iconFile').files?.[0];
+        const newIcon = newIconFile ? URL.createObjectURL(newIconFile) : srcIcon;
+        setIcon('srcIcon', 'srcIconEmpty', srcIcon);
+        setIcon('newIcon', 'newIconEmpty', newIcon);
       }
 
       function applyStatus(data) {
@@ -226,8 +261,7 @@
         const ready = Boolean(data.downloadReady && state.id);
         const dl = $('downloadBtn');
         if (ready) {
-          const key = apiKey();
-          dl.href = key ? `/api/download/${state.id}?api_key=${encodeURIComponent(key)}` : `/api/download/${state.id}`;
+          dl.href = `/api/download/${state.id}`;
           dl.style.display = 'inline-block';
         } else {
           dl.style.display = 'none';
@@ -270,11 +304,13 @@
       async function loadUnity() {
         if (!state.id) return alert('请先上传并解析 APK');
         const data = await api(`/api/unity-config/${state.id}?path=${encodeURIComponent($('unityPath').value.trim())}`);
-        $('unityJson').value = JSON.stringify(data.content, null, 2);
+        const pretty = JSON.stringify(data.content, null, 2);
+        $('unityOriginalJson').value = pretty;
+        $('unityModifiedJson').value = pretty;
       }
 
       function parseUnityPatchesInput() {
-        const raw = $('unityJson').value.trim();
+        const raw = $('unityModifiedJson').value.trim();
         if (!raw) return [];
 
         const parsed = JSON.parse(raw);
@@ -324,8 +360,7 @@
 
         await api('/api/mod', {
           method: 'POST',
-          body: form,
-          headers: withAuth()
+          body: form
         });
 
         await refreshStatus();
@@ -339,7 +374,12 @@
       });
 
       $('refreshTools').addEventListener('click', refreshTools);
-      $('uploadBtn').addEventListener('click', () => upload().catch((e) => alert(e.message)));
+      $('pickApkBtn').addEventListener('click', () => $('apkFile').click());
+      $('apkFile').addEventListener('change', () => {
+        if ($('apkFile').files?.[0]) {
+          upload().catch((e) => alert(e.message));
+        }
+      });
       $('refreshStatus').addEventListener('click', () => refreshStatus().catch((e) => alert(e.message)));
       $('loadUnity').addEventListener('click', () => loadUnity().catch((e) => alert(e.message)));
       $('modBtn').addEventListener('click', () => modBuild().catch((e) => alert(e.message)));
