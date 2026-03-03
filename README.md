@@ -131,11 +131,15 @@ docker compose up -d
 服务端口：`http://localhost:3000`
 
 说明：
+- 默认通过预构建镜像 `ghcr.io/tanyuxiao/apk-modder:latest` 启动（首次仅拉取镜像，不做本地构建）。
 - Compose 默认使用 Docker named volume（`apk_modder_data`）保存运行数据，避免 macOS bind mount 小文件 IO 瓶颈。
-- 首次构建会下载：
+- 如需本地构建，使用：
+  - `docker compose -f docker-compose.yml -f docker-compose.build.yml up -d --build`
+- 本地构建会下载：
   - `apktool` jar（默认 GitHub release）
   - Android build-tools（默认 `build-tools_r34-linux.zip`）
 - 受限网络可通过 `.env` 覆盖构建参数（示例见 `README-quickstart.md`）：
+  - `APK_MODDER_IMAGE`
   - `NODE_BUILD_IMAGE`
   - `NODE_RUNTIME_IMAGE`
   - `APKTOOL_JAR_URL`
