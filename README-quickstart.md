@@ -23,6 +23,7 @@ docker compose up -d --build
 ```bash
 cat > .env <<'EOF'
 APK_MODDER_IMAGE=ghcr.io/tanyuxiao/apk-modder:latest
+APK_MODDER_PLATFORM=linux/amd64
 NODE_BUILD_IMAGE=docker.m.daocloud.io/library/node:20-bookworm
 NODE_RUNTIME_IMAGE=docker.m.daocloud.io/library/node:20-bookworm-slim
 APKTOOL_JAR_URL=https://ghproxy.com/https://github.com/iBotPeaches/Apktool/releases/download/v2.11.1/apktool_2.11.1.jar
@@ -32,6 +33,10 @@ JDK_URL_ARM64=https://api.adoptium.net/v3/binary/latest/17/ga/linux/aarch64/jdk/
 EOF
 ./scripts/quick-start.sh
 ```
+
+Notes:
+- Default container platform is `linux/amd64` to keep `zipalign`/`apksigner` behavior consistent on Apple Silicon.
+- If you have verified an arm64-compatible toolchain, you can set `APK_MODDER_PLATFORM=linux/arm64`.
 
 ## Stop
 ```bash

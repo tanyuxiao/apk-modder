@@ -132,6 +132,7 @@ docker run --rm -p 3000:3000 apk-modder:dev
 
 说明：
 - `quick-start.sh` 会优先拉预构建镜像（`ghcr.io/tanyuxiao/apk-modder:latest`），失败自动回退本地构建。
+- 默认容器平台为 `linux/amd64`，确保 `zipalign`/`apksigner` 在 Apple Silicon 环境可用。
 - Compose 默认使用 Docker named volume（`apk_modder_data`）保存运行数据，避免 macOS bind mount 小文件 IO 瓶颈。
 - 强制本地构建可用：
   - `docker compose up -d --build`
@@ -140,6 +141,7 @@ docker run --rm -p 3000:3000 apk-modder:dev
   - Android build-tools（默认 `build-tools_r34-linux.zip`）
 - 受限网络可通过 `.env` 覆盖构建参数（示例见 `README-quickstart.md`）：
   - `APK_MODDER_IMAGE`
+  - `APK_MODDER_PLATFORM`
   - `NODE_BUILD_IMAGE`
   - `NODE_RUNTIME_IMAGE`
   - `APKTOOL_JAR_URL`

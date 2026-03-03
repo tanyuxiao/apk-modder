@@ -1,5 +1,6 @@
 services:
   apk-modder:
+    platform: ${APK_MODDER_PLATFORM:-linux/amd64}
     build:
       context: .
       dockerfile: Dockerfile
