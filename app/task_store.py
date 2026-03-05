@@ -15,16 +15,18 @@ def now_iso() -> str:
     return datetime.now(tz=timezone.utc).isoformat().replace('+00:00', 'Z')
 
 
-def create_task(file_path: str, original_name: str) -> Task:
+def create_task(file_path: str, original_name: str, library_item_id: str | None = None) -> Task:
     task_id = str(uuid.uuid4())
     now = now_iso()
     task = Task(
         id=task_id,
         status='queued',
         filePath=file_path,
+        sourceName=original_name,
         workDir=str(WORK_DIR_ROOT / task_id),
         createdAt=now,
         updatedAt=now,
+        libraryItemId=library_item_id,
     )
     with _LOCK:
         _TASKS[task_id] = task

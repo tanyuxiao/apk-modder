@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
+from app.apk_library import update_parse_cache
 from app.config import (
     APKTOOL_PATH,
     APKSIGNER_PATH,
@@ -13,6 +14,7 @@ from app.config import (
     ZIPALIGN_PATH,
 )
 from app.manifest_service import apply_icon_replacement, parse_apk_info, update_manifest
+from app.file_patch_service import apply_file_patches
 from app.models import ModPayload, Task
 from app.task_store import log_task, set_task_error
 from app.toolchain import run_command
@@ -74,6 +76,8 @@ def run_decompile_task(task: Task) -> None:
             run_command(APKTOOL_PATH, decode_args)
 
         parse_apk_info(task)
+        if task.libraryItemId and task.apkInfo:
+            update_parse_cache(task.libraryItemId, str(out_dir), task.apkInfo.__dict__)
         task.status = 'success'
         log_task(task, 'Decompile finished')
     except Exception as exc:  # noqa: BLE001
@@ -92,6 +96,7 @@ def run_mod_task(task: Task, payload: ModPayload) -> None:
             icon_ref = apply_icon_replacement(task, payload.iconUploadPath, ext)
         update_manifest(task, payload, icon_ref)
         apply_unity_patches(task, payload)
+        apply_file_patches(task, payload)
     except Exception as exc:  # noqa: BLE001
         set_task_error(task, exc, 'Manifest update failed')
         return

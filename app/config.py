@@ -35,6 +35,9 @@ DATA_ROOT = Path(os.getcwd()) / 'data'
 UPLOAD_DIR = DATA_ROOT / 'uploads'
 MOD_UPLOAD_DIR = DATA_ROOT / 'mod-uploads'
 WORK_DIR_ROOT = DATA_ROOT / 'work'
+APK_LIBRARY_DIR = DATA_ROOT / 'apk-library'
+APK_LIBRARY_INDEX_PATH = DATA_ROOT / 'apk-library-index.json'
+APK_LIBRARY_CACHE_ROOT = DATA_ROOT / 'apk-library-cache'
 
 APKTOOL_PATH = os.getenv('APKTOOL_PATH', 'apktool')
 ZIPALIGN_PATH = os.getenv('ZIPALIGN_PATH', _detect_build_tool('zipalign'))
@@ -76,3 +79,7 @@ def ensure_runtime_dirs() -> None:
     UPLOAD_DIR.mkdir(parents=True, exist_ok=True)
     MOD_UPLOAD_DIR.mkdir(parents=True, exist_ok=True)
     WORK_DIR_ROOT.mkdir(parents=True, exist_ok=True)
+    APK_LIBRARY_DIR.mkdir(parents=True, exist_ok=True)
+    APK_LIBRARY_CACHE_ROOT.mkdir(parents=True, exist_ok=True)
+    if not APK_LIBRARY_INDEX_PATH.exists():
+        APK_LIBRARY_INDEX_PATH.write_text('[]\n', encoding='utf-8')

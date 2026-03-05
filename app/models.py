@@ -25,6 +25,17 @@ class UnityPatch:
 
 
 @dataclass
+class FilePatch:
+    path: str
+    mode: str
+    content: str | None = None
+    matchText: str | None = None
+    replaceText: str | None = None
+    regex: bool = False
+    replacementBase64: str | None = None
+
+
+@dataclass
 class ModPayload:
     appName: str | None = None
     packageName: str | None = None
@@ -33,6 +44,7 @@ class ModPayload:
     iconUploadPath: str | None = None
     unityConfigPath: str | None = None
     unityPatches: list[UnityPatch] = field(default_factory=list)
+    filePatches: list[FilePatch] = field(default_factory=list)
 
 
 @dataclass
@@ -40,6 +52,7 @@ class Task:
     id: str
     status: TaskStatus
     filePath: str
+    sourceName: str
     workDir: str
     createdAt: str
     updatedAt: str
@@ -51,3 +64,4 @@ class Task:
     signedApkPath: str | None = None
     iconFilePath: str | None = None
     apkInfo: ApkInfo | None = None
+    libraryItemId: str | None = None

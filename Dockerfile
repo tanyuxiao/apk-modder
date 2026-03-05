@@ -44,8 +44,6 @@ COPY --from=build /opt/tooling/build-tools.zip /tmp/build-tools.zip
 COPY --from=build /opt/tooling/jdk.tar.gz /tmp/jdk.tar.gz
 COPY --from=build /opt/venv /opt/venv
 
-RUN apt-get update && apt-get install -y --no-install-recommends ca-certificates curl && rm -rf /var/lib/apt/lists/*
-
 RUN set -eux; \
   mkdir -p /opt/java/openjdk; \
   tar -xzf /tmp/jdk.tar.gz -C /opt/java/openjdk --strip-components=1; \
