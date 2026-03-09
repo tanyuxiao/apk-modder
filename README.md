@@ -38,7 +38,8 @@ docker compose up -d --build
 - `GET /health`
 - `GET /api/tools`
 - `POST /api/upload`
-- `GET /api/library/apks`
+- `GET /api/library/apks` (返回库项列表，若存在缓存会包含 `apkInfo.iconUrl`)
+- `GET /api/library/icon/:id` (获取库 APK 的图标，用于显示)
 - `POST /api/library/use`
 - `DELETE /api/library/apks/:id`
 - `POST /api/mod` (可选 API Key)

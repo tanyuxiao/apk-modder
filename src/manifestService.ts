@@ -147,6 +147,28 @@ export function parseApkInfo(task: Task): Task {
   return task;
 }
 
+// ---------------------------------------------------------------------------
+// helpers for library item support
+// ---------------------------------------------------------------------------
+
+/**
+ * Find the best icon file path inside a decoded directory.  Returns null if
+ * nothing discoverable.  Used by library endpoints so we can serve an icon we
+ * already cached without creating a task.
+ */
+export function findIconInDecoded(decodedDir: string): string | null {
+  if (!fs.existsSync(path.join(decodedDir, 'AndroidManifest.xml'))) {
+    return null;
+  }
+  const xml = fs.readFileSync(path.join(decodedDir, 'AndroidManifest.xml'), 'utf8');
+  const appTag = xml.match(/<application\b[^>]*>/)?.[0] || '';
+  const iconRef = readAttr(appTag, 'android:icon');
+  if (!iconRef) {
+    return null;
+  }
+  return resolveIconFile(decodedDir, iconRef) || null;
+}
+
 export function applyIconReplacement(task: Task, iconUploadPath: string, ext: string): string {
   if (!task.decodedDir) {
     throw new Error('Decoded directory is missing');

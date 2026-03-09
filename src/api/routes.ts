@@ -8,7 +8,7 @@ import { getApkItem, listApkItems, addOrGetApkItem, deleteApkItem, touchApkItem 
 import { runDecompileTask, runModTask } from '../buildService';
 import { modQueue } from '../taskQueue';
 import { readEditableFile, parseFilePatchesInput } from '../filePatchService';
-import { parseApkInfo } from '../manifestService';
+import { parseApkInfo, findIconInDecoded } from '../manifestService';
 import { createTask, getTask, listTasks, logTask, updateTask } from '../taskStore';
 import { getToolchainStatus } from '../toolchain';
 import { readUnityConfig, parseUnityPatchesInput } from '../unityConfigService';
@@ -79,11 +79,9 @@ export function createApiRouter(): Router {
       fs.mkdirSync(path.dirname(decodedDir), { recursive: true });
       fs.cpSync(activeItem.decodeCachePath, decodedDir, { recursive: true });
       task.decodedDir = decodedDir;
-      if (activeItem.apkInfo) {
-        task.apkInfo = { ...activeItem.apkInfo, iconUrl: null } as ApkInfo;
-      } else {
-        parseApkInfo(task);
-      }
+      // re-parse so iconUrl points to this new task instead of being null or
+      // stale. this also refreshes other metadata just in case.
+      parseApkInfo(task);
       task.status = 'success';
       logTask(task, 'Loaded decoded cache from APK library (skip decompile)');
     } else {
@@ -112,7 +110,34 @@ export function createApiRouter(): Router {
     ok(res, { ...startTaskFromLibraryItem(item, tenantId), deduplicatedUpload: !created });
   });
 
-  router.get('/library/apks', (_req, res) => ok(res, { items: listApkItems() }));
+  router.get('/library/apks', (_req, res) => {
+    const items = listApkItems().map(item => {
+      // when we have a decoded cache we can provide an icon URL that will
+      // return the appropriate image derived from the cache. this keeps the
+      // library UI from showing a blank square.
+      let iconUrl: string | null = null;
+      if (item.decodeCachePath) {
+        iconUrl = `/api/library/icon/${item.id}`;
+      }
+      return { ...item, apkInfo: item.apkInfo ? { ...item.apkInfo, iconUrl } : null };
+    });
+    ok(res, { items });
+  });
+
+  // serve an icon directly from the library cache without creating a task
+  router.get('/library/icon/:itemId', (req, res) => {
+    const item = getApkItem(req.params['itemId']);
+    if (!item || !item.decodeCachePath) {
+      fail(res, 404, 'Icon not found', 'NOT_FOUND');
+      return;
+    }
+    const iconPath = findIconInDecoded(item.decodeCachePath);
+    if (!iconPath || !fs.existsSync(iconPath)) {
+      fail(res, 404, 'Icon not found', 'NOT_FOUND');
+      return;
+    }
+    res.sendFile(iconPath);
+  });
 
   router.post('/library/use', (req, res) => {
     const itemId = String(req.body?.id || '').trim();

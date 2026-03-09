@@ -57,8 +57,10 @@ export function attachCachedIconForTask(task: Task): Task {
   });
 
   task.iconFilePath = candidates[0] || null;
-  // caller is responsible for setting apkInfo.iconUrl appropriately
-  task.apkInfo.iconUrl = null;
+  // when we know the file path we can also set up a proper URL for the current
+  // task. this avoids URLs referring to stale task IDs that may have been
+  // recorded when the library entry was created.
+  task.apkInfo.iconUrl = task.iconFilePath ? `/api/icon/${task.id}?v=1` : null;
   return updateTask(task);
 }
 
@@ -80,12 +82,9 @@ export function createTaskFromLibraryItem(
     fs.mkdirSync(path.dirname(decodedDir), { recursive: true });
     fs.cpSync(activeItem.decodeCachePath, decodedDir, { recursive: true });
     task.decodedDir = decodedDir;
-    if (activeItem.apkInfo) {
-      task.apkInfo = { ...activeItem.apkInfo, iconUrl: null } as ApkInfo;
-      attachCachedIconForTask(task);
-    } else {
-      parseApkInfo(task);
-    }
+    // parsing again ensures we recompute all fields (including iconUrl) based on
+    // the *new* task id rather than reusing stale data from the library entry.
+    parseApkInfo(task);
     task.status = 'success';
     logTask(task, 'Loaded decoded cache from APK library (skip decompile)');
   }
