@@ -10,6 +10,14 @@ docker compose up -d --build
 
 启动后访问：`http://localhost:3000`
 
+## 运行自检
+
+用于校验 apktool/zipalign/apksigner/keytool 以及 Redis 连接：
+
+```bash
+npm run self-check
+```
+
 ## 快速启动脚本
 
 ```bash

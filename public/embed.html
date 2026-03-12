@@ -344,7 +344,9 @@
     let isAdmin = false;
     let tenantId = '';
     const parentOrigin = window.location.ancestorOrigins?.[0] || '*';
-    const apiBase = window.location.pathname.startsWith('/apk-rebuilder/') ? '/apk-rebuilder' : '';
+    let apiBase = window.location.pathname.startsWith('/apk-rebuilder/')
+      ? '/apk-rebuilder'
+      : '';
     let locale = 'zh-CN';
     let themeMode = 'light';
     let themeName = '';
@@ -550,12 +552,20 @@
       }
     }
 
+    function resolveApiBase(config) {
+      const fromConfig = typeof config?.apiBase === 'string' ? config.apiBase.trim() : '';
+      if (fromConfig) return fromConfig;
+      if (window.location.pathname.startsWith('/apk-rebuilder/')) return '/apk-rebuilder';
+      return '';
+    }
+
     window.addEventListener('message', (e) => {
       const msg = e.data || {};
       switch (msg.type) {
         case 'INIT':
           token = msg.payload?.token || '';
           initConfig = msg.payload?.config || {};
+          apiBase = resolveApiBase(initConfig);
           standardLibraryItemId = initConfig.standardLibraryItemId || initConfig.standard_library_item_id || '';
           previousStandardLibraryItemId =
             initConfig.previousStandardLibraryItemId ||
@@ -853,12 +863,20 @@
       }
       const json = JSON.parse(raw);
       const data = json?.data || json;
-      const status = data?.status || '';
+      const status = String(data?.status || '').toLowerCase();
       const progress = data?.progress;
       const pctValue = typeof progress?.percent === 'number' ? progress.percent : null;
       const pctLabel = pctValue !== null ? `${pctValue}%` : '';
-      setStatus(`${t('processing')} ${status}${pctLabel ? ` · ${pctLabel}` : ''}`);
-      setProgress(status === 'success' ? 'done' : 'processing', progress?.message || '');
+      if (status === 'success') {
+        setStatus(t('success'));
+        setProgress('done', t('success'));
+      } else if (status === 'failed' || status === 'error') {
+        setStatus(t('failed'));
+        setProgress('processing', t('failed'), true);
+      } else {
+        setStatus(pctLabel ? `${t('processing')} ${pctLabel}` : t('processing'));
+        setProgress('processing', t('processing'));
+      }
 
       const artifacts = Array.isArray(data?.artifacts) ? data.artifacts : [];
       if (artifacts.length) {
@@ -877,12 +895,7 @@
         return true;
       }
 
-      if (status === 'failed' || status === 'error') {
-        setStatus(t('failed'));
-        setProgress('processing', t('failed'), true);
-        return true;
-      }
-      return false;
+      return status === 'failed' || status === 'error' || status === 'success';
     }
 
     function startPolling(runId) {
@@ -930,10 +943,12 @@
 
       if (!appName || !sceneId) {
         setStatus(`${t('appName')}/${t('sceneId')} ${t('failed')}`);
+        setProgress('idle', '');
         return;
       }
       if (!standardLibraryItemId) {
         setStatus(`${t('failed')}`);
+        setProgress('idle', '');
         return;
       }
 
