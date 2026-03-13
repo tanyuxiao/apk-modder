@@ -30,6 +30,7 @@ export function createEmbedUI({ t }) {
           <button id="submitBtn">${t('submit')}</button>
           <span id="status"></span>
         </div>
+        <div id="statusBanner" class="status-banner"></div>
         <div class="steps" id="progressSteps">
           <div class="step" data-step="submit"><span class="dot"></span><span class="label"></span></div>
           <div class="step" data-step="processing"><span class="dot"></span><span class="label"></span></div>
@@ -80,6 +81,7 @@ export function createEmbedUI({ t }) {
   const progressStepsEl = document.getElementById('progressSteps');
   const progressTextEl = document.getElementById('progressText');
   const downloadAreaEl = document.getElementById('downloadArea');
+  const statusBannerEl = document.getElementById('statusBanner');
   const adminSectionEl = document.getElementById('adminSection');
   const appIconFile = document.getElementById('appIconFile');
   const pickIconBtn = document.getElementById('pickIconBtn');
@@ -102,6 +104,13 @@ export function createEmbedUI({ t }) {
 
   function setStatus(text) {
     if (statusEl) statusEl.textContent = text || '';
+  }
+
+  function setStatusBanner(text) {
+    if (!statusBannerEl) return;
+    const content = text || '';
+    statusBannerEl.textContent = content;
+    statusBannerEl.classList.toggle('visible', Boolean(content));
   }
 
   function setProgress(step, text, failed = false) {
@@ -170,6 +179,7 @@ export function createEmbedUI({ t }) {
     setIconFileLabel(selectedIconFile ? (selectedIconFile.name || '') : '');
     updateIconPreview();
     setProgress('idle', '');
+    setStatusBanner('');
   }
 
   function renderScenes(sceneState) {
@@ -305,6 +315,7 @@ export function createEmbedUI({ t }) {
     submitBtn,
     adminSectionEl,
     setStatus,
+    setStatusBanner,
     setProgress,
     setDownloadArea,
     renderStaticTexts,

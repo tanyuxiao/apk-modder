@@ -5,11 +5,13 @@ import { createSceneLoader } from './embed.scenes.js';
 import { createAdminSection } from './embed.admin.js';
 import { createRunProgress } from './embed.progress.js';
 import { createSubmitHandler } from './embed.submit.js';
+import { createErrorNotifier } from './embed.errors.js';
 
 const i18n = createI18n('zh-CN');
-const host = createHostClient({ i18n });
 const ui = createEmbedUI({ t: i18n.t });
-const scenes = createSceneLoader({ host, ui });
+const notify = createErrorNotifier({ ui, t: i18n.t });
+const host = createHostClient({ i18n, notify });
+const scenes = createSceneLoader({ host, ui, notify });
 const admin = createAdminSection({ host, ui, t: i18n.t });
 const progress = createRunProgress({ host, ui, t: i18n.t });
 const submit = createSubmitHandler({ host, ui, i18n, progress });

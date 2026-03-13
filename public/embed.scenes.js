@@ -1,4 +1,4 @@
-export function createSceneLoader({ host, ui }) {
+export function createSceneLoader({ host, ui, notify }) {
   const state = {
     scenes: [],
     scenesLoading: false,
@@ -23,13 +23,15 @@ export function createSceneLoader({ host, ui }) {
         state.scenesLoaded = true;
         return;
       }
-      const res = await host.authFetch(url, { method: 'GET' });
+      // Scene list must use AccessToken (user identity)
+      const res = await host.authFetchAccess(url, { method: 'GET' });
       const json = await res.json();
       const list = json?.data || json?.scenes || json || [];
       state.scenes = Array.isArray(list) ? list : [];
       state.scenesLoaded = true;
     } catch (err) {
       state.scenesError = String(err || '');
+      notify?.showAuthError?.('scene', err);
     } finally {
       state.scenesLoading = false;
       render();

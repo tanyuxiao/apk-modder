@@ -108,6 +108,11 @@
       --download-btn-bg: #16a34a;
       --download-btn-text: #ffffff;
       --download-btn-decoration: none;
+      --status-banner-padding: 8px 12px;
+      --status-banner-radius: 8px;
+      --status-banner-bg: #fef2f2;
+      --status-banner-text: #991b1b;
+      --status-banner-border: 1px solid #fecaca;
       --admin-item-padding: 6px 0;
       --admin-item-gap: 8px;
       --admin-item-border: 1px solid var(--admin-divider-color);
@@ -397,6 +402,19 @@
       background: var(--download-btn-bg);
       color: var(--download-btn-text);
       text-decoration: var(--download-btn-decoration);
+    }
+    .status-banner {
+      margin-top: var(--download-margin-top);
+      padding: var(--status-banner-padding);
+      border-radius: var(--status-banner-radius);
+      background: var(--status-banner-bg);
+      color: var(--status-banner-text);
+      font-size: var(--font-size-hint);
+      display: none;
+      border: var(--status-banner-border);
+    }
+    .status-banner.visible {
+      display: block;
     }
     @media (max-width: 680px) {
       .container { padding: var(--container-padding-sm); }
