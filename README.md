@@ -38,8 +38,27 @@ npm run self-check
   - `src/common/`: 公共工具函数（响应格式、任务处理等）
   - `src/middleware/`: 中间件（例如 `requireAuth`）
 - `public/`: 静态前端页面（仅供本仓库内的调试界面使用）
+  - `embed.html`: 插件 iframe 入口
+  - `embed.theme.css`: 主题变量（含日/夜两套）
+  - `embed.ui.css`: 组件样式
+  - `embed.*.js`: 插件嵌入端脚本模块
+- `EMBED_STRUCTURE.md`: 嵌入端结构说明（脚本与样式拆分说明）
 - `Dockerfile`: 生产镜像构建
 - `docker-compose.yml`: 本地/部署启动
+
+## 插件接口
+
+本仓库本身只是 **一个独立的后端插件实现**，并不包含宿主框架。 在一个平台中可能会有多个类似插件，`apk-rebuilder` 是其中之一，本项目演示了后端插件的最小结构。标准入口如下：
+
+- `GET /plugin/manifest`
+- `POST /plugin/execute`
+- `GET /plugin/runs/:runId`
+- `GET /plugin/artifacts/:artifactId`
+
+说明：
+- `/plugin/*` 使用插件 token 鉴权，不复用旧的 `API_KEY`。
+- `/api/*` 仍保留用于旧页面和本地调试，**仅用于本仓库构建的独立前端界面**，而非宿主平台的插件接口。
+- 默认内置本地 artifact 存储兼容层；若宿主平台提供独立 artifact service，可继续替换实现而不改插件 API。
 
 ## 后端接口
 
@@ -71,20 +90,6 @@ npm run self-check
 - `downloadReady` 会变为 `true`，并可从 `/api/download/:id` 获取一个占位 APK。
 
 此外，当前版本已将任务日志 (`task.logs`) 加入到 `/api/status` 和 `/api/tasks` 返回值中，前端页面会显示它们并据此调整进度条。这样即便没有安装外部工具，也能完整演练上传、修改、构建流程。
-
-## 插件接口
-
-本仓库本身只是 **一个独立的后端插件实现**，并不包含宿主框架。 在一个平台中可能会有多个类似插件，`apk-rebuilder` 是其中之一，本项目演示了后端插件的最小结构。标准入口如下：
-
-- `GET /plugin/manifest`
-- `POST /plugin/execute`
-- `GET /plugin/runs/:runId`
-- `GET /plugin/artifacts/:artifactId`
-
-说明：
-- `/plugin/*` 使用插件 token 鉴权，不复用旧的 `API_KEY`。
-- `/api/*` 仍保留用于旧页面和本地调试，**仅用于本仓库构建的独立前端界面**，而非宿主平台的插件接口。
-- 默认内置本地 artifact 存储兼容层；若宿主平台提供独立 artifact service，可继续替换实现而不改插件 API。
 
 ## 本地开发
 
