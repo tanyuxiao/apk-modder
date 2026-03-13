@@ -32,7 +32,9 @@ jobs:
         run: npm run build
 
       - name: Test
-        run: npm run test --if-present
+        run: |
+          docker compose up -d redis-apk-rebuilder
+          docker compose run --rm apk-rebuilder node scripts/self-check.js
 
   cd:
     runs-on: ubuntu-latest
