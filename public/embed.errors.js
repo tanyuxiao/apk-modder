@@ -1,14 +1,14 @@
 export function createErrorNotifier({ ui, t }) {
   function showAuthError(type, err) {
     const detail = err ? ` (${String(err).slice(0, 120)})` : '';
-    if (type === 'accessToken') {
-      ui.setStatus(`${t('authAccessTokenFailed')}${detail}`);
-      ui.setStatusBanner(`${t('authAccessTokenFailed')}${detail}`);
+    if (type === 'token') {
+      ui.setStatus(`${t('authTokenFailed')}${detail}`);
+      ui.setStatusBanner(`${t('authTokenFailed')}${detail}`);
       return;
     }
-    if (type === 'pluginToken') {
-      ui.setStatus(`${t('authPluginTokenFailed')}${detail}`);
-      ui.setStatusBanner(`${t('authPluginTokenFailed')}${detail}`);
+    if (type === 'pluginAuth') {
+      ui.setStatus(`${t('authPluginAuthFailed')}${detail}`);
+      ui.setStatusBanner(`${t('authPluginAuthFailed')}${detail}`);
       return;
     }
     if (type === 'scene') {

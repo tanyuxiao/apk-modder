@@ -101,9 +101,9 @@ export function requireScope(principal: PluginPrincipal, scope: string): void {
 }
 
 /**
- * Loose principal for accessToken-only mode.
+ * Loose principal for token-only mode.
  * If plugin token verification fails, fall back to a permissive principal so
- * frontend accessToken can still access plugin routes.
+ * frontend token can still access plugin routes.
  */
 export function getLoosePrincipal(req: Request): PluginPrincipal {
   try {

@@ -23,8 +23,8 @@ export function createSceneLoader({ host, ui, notify }) {
         state.scenesLoaded = true;
         return;
       }
-      // Scene list must use AccessToken (user identity)
-      const res = await host.authFetchAccess(url, { method: 'GET' });
+      // Scene list must use user token (identity)
+      const res = await host.authFetchToken(url, { method: 'GET' });
       const json = await res.json();
       const list = json?.data || json?.scenes || json || [];
       state.scenes = Array.isArray(list) ? list : [];

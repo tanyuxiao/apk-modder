@@ -1,9 +1,8 @@
 export function createHostClient({ i18n, notify }) {
   let token = '';
-  let accessToken = '';
-  let pluginToken = '';
-  let accessTokenExp = 0;
-  let pluginTokenExp = 0;
+  let pluginAuth = '';
+  let tokenExp = 0;
+  let pluginAuthExp = 0;
   let initConfig = {};
   let standardLibraryItemId = '';
   let previousStandardLibraryItemId = '';
@@ -64,10 +63,9 @@ export function createHostClient({ i18n, notify }) {
 
   function handleInit(payload = {}) {
     token = payload?.token || '';
-    accessToken = payload?.accessToken || accessToken;
-    pluginToken = payload?.pluginToken || pluginToken;
-    accessTokenExp = normalizeExp(payload?.accessTokenExp || accessTokenExp);
-    pluginTokenExp = normalizeExp(payload?.pluginTokenExp || pluginTokenExp);
+    pluginAuth = payload?.pluginAuth || pluginAuth;
+    tokenExp = normalizeExp(payload?.tokenExp || tokenExp);
+    pluginAuthExp = normalizeExp(payload?.pluginAuthExp || pluginAuthExp);
     initConfig = payload?.config || {};
     apiBase = resolveApiBase(initConfig);
     standardLibraryItemId = initConfig.standardLibraryItemId || initConfig.standard_library_item_id || '';
@@ -81,10 +79,9 @@ export function createHostClient({ i18n, notify }) {
 
   function handleTokenUpdate(payload = {}) {
     token = payload?.token || token;
-    if (payload?.accessToken) accessToken = payload.accessToken;
-    if (payload?.pluginToken) pluginToken = payload.pluginToken;
-    if (payload?.accessTokenExp) accessTokenExp = normalizeExp(payload.accessTokenExp);
-    if (payload?.pluginTokenExp) pluginTokenExp = normalizeExp(payload.pluginTokenExp);
+    if (payload?.pluginAuth) pluginAuth = payload.pluginAuth;
+    if (payload?.tokenExp) tokenExp = normalizeExp(payload.tokenExp);
+    if (payload?.pluginAuthExp) pluginAuthExp = normalizeExp(payload.pluginAuthExp);
   }
 
   function withApiBase(url) {
@@ -93,60 +90,60 @@ export function createHostClient({ i18n, notify }) {
     return `${apiBase}${url}`;
   }
 
-  async function refreshAccessToken() {
-    const url = initConfig?.auth?.refreshAccessTokenUrl || '';
-    if (!url) throw new Error('missing refreshAccessTokenUrl');
+  async function refreshToken() {
+    const url = initConfig?.auth?.refreshTokenUrl || '';
+    if (!url) throw new Error('missing refreshTokenUrl');
     const res = await fetch(url, { method: 'POST' });
     const json = await res.json();
-    accessToken = json?.accessToken || accessToken;
-    accessTokenExp = normalizeExp(json?.accessTokenExp || accessTokenExp);
-    return accessToken;
+    token = json?.token || token;
+    tokenExp = normalizeExp(json?.tokenExp || tokenExp);
+    return token;
   }
 
-  async function ensureAccessToken() {
-    if (accessToken && !isExpired(accessTokenExp)) return accessToken;
-    if (accessToken && isExpired(accessTokenExp)) {
+  async function ensureToken() {
+    if (token && !isExpired(tokenExp)) return token;
+    if (token && isExpired(tokenExp)) {
       try {
-        return await refreshAccessToken();
+        return await refreshToken();
       } catch (err) {
-        notify?.showAuthError?.('accessToken', err);
+        notify?.showAuthError?.('token', err);
         throw err;
       }
     }
     if (token) return token;
-    throw new Error('missing accessToken');
+    throw new Error('missing token');
   }
 
-  async function fetchPluginToken() {
-    const url = initConfig?.auth?.pluginTokenUrl || '';
+  async function fetchPluginAuth() {
+    const url = initConfig?.auth?.pluginAuthUrl || '';
     if (!url) {
-      pluginToken = accessToken || token;
-      pluginTokenExp = accessTokenExp || accessTokenExp;
-      return pluginToken;
+      pluginAuth = token;
+      pluginAuthExp = tokenExp;
+      return pluginAuth;
     }
-    const bearer = await ensureAccessToken();
+    const bearer = await ensureToken();
     try {
       const res = await fetch(url, {
         method: 'POST',
         headers: { Authorization: `Bearer ${bearer}` },
       });
       const json = await res.json();
-      pluginToken = json?.pluginToken || pluginToken;
-      pluginTokenExp = normalizeExp(json?.pluginTokenExp || pluginTokenExp);
-      return pluginToken;
+      pluginAuth = json?.pluginAuth || pluginAuth;
+      pluginAuthExp = normalizeExp(json?.pluginAuthExp || pluginAuthExp);
+      return pluginAuth;
     } catch (err) {
-      notify?.showAuthError?.('pluginToken', err);
+      notify?.showAuthError?.('pluginAuth', err);
       throw err;
     }
   }
 
-  async function ensurePluginToken() {
-    if (pluginToken && !isExpired(pluginTokenExp)) return pluginToken;
-    return fetchPluginToken();
+  async function ensurePluginAuth() {
+    if (pluginAuth && !isExpired(pluginAuthExp)) return pluginAuth;
+    return fetchPluginAuth();
   }
 
   async function authFetch(url, opts = {}) {
-    const bearer = await ensurePluginToken();
+    const bearer = await ensurePluginAuth();
     opts.headers = { ...(opts.headers || {}), Authorization: `Bearer ${bearer}` };
     if (tenantId) {
       opts.headers['X-Tenant-Id'] = tenantId;
@@ -154,8 +151,8 @@ export function createHostClient({ i18n, notify }) {
     return fetch(withApiBase(url), opts);
   }
 
-  async function authFetchAccess(url, opts = {}) {
-    const bearer = await ensureAccessToken();
+  async function authFetchToken(url, opts = {}) {
+    const bearer = await ensureToken();
     opts.headers = { ...(opts.headers || {}), Authorization: `Bearer ${bearer}` };
     if (tenantId) {
       opts.headers['X-Tenant-Id'] = tenantId;
@@ -166,10 +163,9 @@ export function createHostClient({ i18n, notify }) {
   function getState() {
     return {
       token,
-      accessToken,
-      pluginToken,
-      accessTokenExp,
-      pluginTokenExp,
+      pluginAuth,
+      tokenExp,
+      pluginAuthExp,
       initConfig,
       standardLibraryItemId,
       previousStandardLibraryItemId,
@@ -195,9 +191,9 @@ export function createHostClient({ i18n, notify }) {
     handleTokenUpdate,
     withApiBase,
     authFetch,
-    authFetchAccess,
-    ensureAccessToken,
-    ensurePluginToken,
+    authFetchToken,
+    ensureToken,
+    ensurePluginAuth,
     getState,
     setStandardLibraryItemId,
     setPreviousStandardLibraryItemId,

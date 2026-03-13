@@ -11,35 +11,32 @@
 
 ## 2. Token 与鉴权流程
 
-### 2.1 AccessToken（用户身份 Token）
-- 表示用户身份
+### 2.1 Token（用户身份 Access Token）
+- 表示用户身份（JWT）
 - 用于：
-  - 请求 PluginToken（插件权限 Token）
+- 请求 PluginAuth（插件权限 Token）
   - 获取当前用户的场景列表
 - 有有效期，需要刷新
 
-### 2.2 PluginToken（插件权限 Token）
+### 2.2 PluginAuth（插件权限 Token）
 - 表示插件使用权限
 - 用于插件执行相关接口
 
 ### 2.3 INIT 消息（宿主 -> 插件）
 
-推荐格式（字段可替换）：
+推荐格式（与 vue3 文档一致）：
 
 ```json
 {
   "type": "INIT",
   "payload": {
-    "accessToken": "<user-token>",
-    "pluginToken": "<plugin-token>",
-    "accessTokenExp": 1719999999,
-    "pluginTokenExp": 1719999999,
+    "token": "<user-access-token>",
     "config": {
       "apiBase": "/apk-rebuilder",
       "tenantId": "apkrebuilder-mrpp",
       "auth": {
-        "pluginTokenUrl": "https://host-api/token/b",
-        "refreshAccessTokenUrl": "https://host-api/token/refresh",
+        "pluginAuthUrl": "https://host-api/token/b",
+        "refreshTokenUrl": "https://host-api/token/refresh",
         "sceneListUrl": "https://host-api/user/scenes"
       }
     }
@@ -48,44 +45,43 @@
 ```
 
 说明：
-- `accessTokenExp` / `pluginTokenExp` 可以是秒或毫秒
-- 若未提供 `pluginToken`，插件会调用 `pluginTokenUrl` 获取
+- `token` 为用户身份 Token（JWT）
 
-### 2.4 刷新 AccessToken
-
-```
-POST {refreshAccessTokenUrl}
-Authorization: Bearer <accessToken>
-```
-
-推荐响应：
-```json
-{
-  "accessToken": "...",
-  "accessTokenExp": 1719999999
-}
-```
-
-### 2.5 获取 PluginToken
+### 2.4 刷新 Token
 
 ```
-POST {pluginTokenUrl}
-Authorization: Bearer <accessToken>
+POST {refreshTokenUrl}
+Authorization: Bearer <token>
 ```
 
 推荐响应：
 ```json
 {
-  "pluginToken": "...",
-  "pluginTokenExp": 1719999999
+  "token": "...",
+  "tokenExp": 1719999999
 }
 ```
 
-## 3. 场景列表（AccessToken）
+### 2.5 获取 PluginAuth
+
+```
+POST {pluginAuthUrl}
+Authorization: Bearer <token>
+```
+
+推荐响应：
+```json
+{
+  "pluginAuth": "...",
+  "pluginAuthExp": 1719999999
+}
+```
+
+## 3. 场景列表（Token）
 
 ```
 GET {sceneListUrl}
-Authorization: Bearer <accessToken>
+Authorization: Bearer <token>
 ```
 
 推荐响应（标准）：
@@ -101,36 +97,36 @@ Authorization: Bearer <accessToken>
 - `{ "scenes": [...] }`
 - `[ ... ]`
 
-## 4. 插件执行（PluginToken）
+## 4. 插件执行（PluginAuth）
 
 Base URL：`apiBase`（来自 INIT config）
 
 ### 4.1 执行
 ```
 POST {apiBase}/plugin/execute
-Authorization: Bearer <pluginToken>
+Authorization: Bearer <pluginAuth>
 Content-Type: application/json
 ```
 
 ### 4.2 查询状态
 ```
 GET {apiBase}/plugin/runs/{runId}
-Authorization: Bearer <pluginToken>
+Authorization: Bearer <pluginAuth>
 ```
 
 ### 4.3 下载产物
 ```
 GET {apiBase}/plugin/artifacts/{artifactId}?tenantId=xxx
-Authorization: Bearer <pluginToken>
+Authorization: Bearer <pluginAuth>
 ```
 
 ### 4.4 上传图标
 ```
 POST {apiBase}/plugin/icon-upload
-Authorization: Bearer <pluginToken>
+Authorization: Bearer <pluginAuth>
 ```
 
-## 5. 管理员接口（PluginToken）
+## 5. 管理员接口（PluginAuth）
 
 - `GET {apiBase}/plugin/standard-package`
 - `GET {apiBase}/plugin/admin/apk-library`
@@ -140,11 +136,11 @@ Authorization: Bearer <pluginToken>
 
 ## 6. 错误 UI 标准
 
-- AccessToken 刷新失败：
-  - UI 显示：`AccessToken 获取失败，请重新登录`
+- Token 刷新失败：
+  - UI 显示：`Token 获取失败，请重新登录`
   - Banner 同步显示错误详情
 
-- PluginToken 获取失败：
+- PluginAuth 获取失败：
   - UI 显示：`插件权限获取失败`
   - Banner 同步显示错误详情
 
@@ -167,8 +163,8 @@ Authorization: Bearer <pluginToken>
     "tenantId": "apkrebuilder-mrpp",
     "auth": {
       "sceneListUrl": "https://host.example.com/api/scenes",
-      "pluginTokenUrl": "https://host.example.com/api/pluginToken",
-      "refreshAccessTokenUrl": "https://host.example.com/api/refreshAccessToken"
+      "pluginAuthUrl": "https://host.example.com/api/pluginAuth",
+      "refreshTokenUrl": "https://host.example.com/api/refreshToken"
     }
   }
 }
